@@ -1,10 +1,10 @@
 AWSTemplateFormatVersion: "2010-09-09"
 Description: Seed template for AWS deployment pipeline for Terraform projects
 Parameters:
-  SourceS3BucketName:
+  PipelineName:
     Type: String
-    Description: S3 bucket where the Terraform files (to be executed) are located
-    Default: 'codepipeline-ap-northeast-2-haproxy'
+    Description: CodePipeline name used as core NameString
+    Default: 'codepipeline-haproxy'
   TerraformVersion:
     Type: String
     Default: 0.11.11
@@ -26,10 +26,25 @@ Metadata:
           - TerraformVersion
           - TerraformSha256
 Resources:
-  SourceS3Bucket:
-    Type: AWS::S3::Bucket
+  TFSourceS3Bucket:
+    Type: 'AWS::S3::Bucket'
     Properties:
-      BucketName: !Ref SourceS3BucketName
+      AccessControl: Private
+      BucketName: !Sub "tf-${AWS::AccountId}-${AWS::Region}-${PipelineName}"
+  TFLockTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: LockID
+        AttributeType: S
+      KeySchema:
+      - AttributeName: LockID
+        KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      TableName: !Sub "tf-state-lock-${PipelineName}"
+
   SourceS3ObjectKey:
     Type: AWS::S3::Bucket
     Properties:
@@ -70,7 +85,7 @@ Resources:
                 - Name: SourceOutput
               Configuration:
                 S3Bucket:
-                  Ref: SourceS3Bucket
+                  Ref: TFSourceS3Bucket
                 S3ObjectKey:
                   Ref: SourceS3ObjectKey
               RunOrder: 1
@@ -131,7 +146,7 @@ Resources:
               commands:
                 - terraform remote config -backend=s3 -backend-config="bucket=${TerraformStateBucket}" -backend-config="key=terraform.tfstate"
                 - terraform plan -out plan
-                - sleep 5                
+                - sleep 5
                 - terraform apply plan
                 - sleep 10
 
