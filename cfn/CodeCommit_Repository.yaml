@@ -1,0 +1,14 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Template for AWS CodeCommit repository
+Parameters:
+  CCRepositoryName:
+    Type: String
+    Description: Name for CodeCommit repository
+    Default: 'bmw-haproxy'
+    
+Resources:
+  HaproxyRepository:
+    Type: AWS::CodeCommit::Repository
+    Properties:
+      RepositoryDescription: HaproxyRepository
+      RepositoryName: !Ref CCRepositoryName

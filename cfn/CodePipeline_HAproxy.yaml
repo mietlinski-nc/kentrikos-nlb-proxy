@@ -1,9 +1,9 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Seed template for AWS deployment pipeline for Terraform projects
+Description: Seed template for AWS deployment pipeline for NLB proxy
 Parameters:
   PipelineName:
     Type: String
-    Description: CodePipeline name used as core NameString
+    Description: CodePipeline name used as core Name
     Default: 'codepipeline-haproxy'
   TerraformVersion:
     Type: String
@@ -48,17 +48,17 @@ Resources:
   SourceS3ObjectKey:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub '${SourceS3BucketName}-objectkey'
+      BucketName: !Sub '${TFSourceS3Bucket}-objectkey'
   TerraformStateBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub 'tf-${SourceS3BucketName}-statebucket'
+      BucketName: !Sub 'tf-${TFSourceS3Bucket}-statebucket'
       VersioningConfiguration:
         Status: Enabled
   ArtifactStoreBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub '${SourceS3BucketName}-artifactstorebucket'
+      BucketName: !Sub '${TFSourceS3Bucket}-artifactstorebucket'
       VersioningConfiguration:
         Status: Enabled
       AccessControl: BucketOwnerFullControl
