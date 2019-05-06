@@ -1,14 +1,38 @@
 AWSTemplateFormatVersion: "2010-09-09"
-Description: Template for AWS CodeCommit repository
+Description: Template for AWS CodeCommit repository, terraform bucket and lockstate table
 Parameters:
-  CCRepositoryName:
+  ProjectName:
     Type: String
     Description: Name for CodeCommit repository
     Default: 'bmw-haproxy'
-    
+
 Resources:
   HaproxyRepository:
     Type: AWS::CodeCommit::Repository
     Properties:
       RepositoryDescription: HaproxyRepository
-      RepositoryName: !Ref CCRepositoryName
+      RepositoryName: !Ref ProjectName
+  TFSourceS3Bucket:
+    Type: 'AWS::S3::Bucket'
+    Properties:
+      AccessControl: Private
+      BucketName: !Sub "tf-${AWS::AccountId}-${AWS::Region}-${ProjectName}"
+  TFLockTable:
+    Type: 'AWS::DynamoDB::Table'
+    Properties:
+      AttributeDefinitions:
+      - AttributeName: LockID
+        AttributeType: S
+      KeySchema:
+      - AttributeName: LockID
+        KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 5
+        WriteCapacityUnits: 5
+      TableName: !Sub "tf-state-lock-${ProjectName}"
+
+Outputs:
+  TFS3Bucket:
+    Value: !Ref TFSourceS3Bucket
+    Export:
+      Name: !Sub "stateS3Bucket"

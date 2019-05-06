@@ -26,39 +26,14 @@ Metadata:
           - TerraformVersion
           - TerraformSha256
 Resources:
-  TFSourceS3Bucket:
-    Type: 'AWS::S3::Bucket'
-    Properties:
-      AccessControl: Private
-      BucketName: !Sub "tf-${AWS::AccountId}-${AWS::Region}-${PipelineName}"
-  TFLockTable:
-    Type: 'AWS::DynamoDB::Table'
-    Properties:
-      AttributeDefinitions:
-      - AttributeName: LockID
-        AttributeType: S
-      KeySchema:
-      - AttributeName: LockID
-        KeyType: HASH
-      ProvisionedThroughput:
-        ReadCapacityUnits: 5
-        WriteCapacityUnits: 5
-      TableName: !Sub "tf-state-lock-${PipelineName}"
-
   SourceS3ObjectKey:
     Type: AWS::S3::Bucket
     Properties:
       BucketName: !Sub '${TFSourceS3Bucket}-objectkey'
-  TerraformStateBucket:
-    Type: AWS::S3::Bucket
-    Properties:
-      BucketName: !Sub 'tf-${TFSourceS3Bucket}-statebucket'
-      VersioningConfiguration:
-        Status: Enabled
   ArtifactStoreBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub '${TFSourceS3Bucket}-artifactstorebucket'
+      BucketName: !Sub '${TFSourceS3Bucket}-artifacts'
       VersioningConfiguration:
         Status: Enabled
       AccessControl: BucketOwnerFullControl

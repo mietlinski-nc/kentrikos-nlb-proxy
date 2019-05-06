@@ -1,13 +1,37 @@
-locals {
-  cluster_name = "${var.region}-${var.product_domain_name}-${var.environment_type}"
+resource "aws_ecs_service" "haproxy" {
+  name            = "haproxy_immutable"
+  cluster         = "${aws_ecs_cluster.this.id}"
+  task_definition = "${aws_ecs_task_definition.haproxy.arn}"
+  desired_count   = 3
+  iam_role        = "${aws_iam_role.this.arn}"
+  depends_on      = ["aws_iam_role_policy.this"]
 
-  common_tags = {
-    Terraform         = true
-    ProductDomainName = "${var.product_domain_name}"
-    EnvironmentType   = "${var.environment_type}"
-    Cluster           = "${local.cluster_name}"
+  ordered_placement_strategy {
+    type  = "binpack"
+    field = "cpu"
+  }
+
+  load_balancer {
+    target_group_arn = "${aws_lb_target_group.this.arn}"
+    container_name   = "haproxy"
+    container_port   = 8080
+  }
+
+  placement_constraints {
+    type       = "memberOf"
   }
 }
+
+resource "aws_ecs_task_definition" "haproxy" {
+  family                = "service"
+  container_definitions = "${file("task-definitions/service.json")}"
+
+  volume {
+    name      = "service-storage"
+    host_path = "/ecs/service-storage"
+  }
+}
+
 
 # VPC for Kubernetes cluster:
 module "vpc" {
