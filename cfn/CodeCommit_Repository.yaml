@@ -16,7 +16,7 @@ Resources:
     Type: 'AWS::S3::Bucket'
     Properties:
       AccessControl: Private
-      BucketName: !Sub "tf-${AWS::AccountId}-${AWS::Region}-${ProjectName}"
+      BucketName: !Sub "tf-${AWS::AccountId}-${AWS::Region}-bmw-haproxy"
   TFLockTable:
     Type: 'AWS::DynamoDB::Table'
     Properties:
