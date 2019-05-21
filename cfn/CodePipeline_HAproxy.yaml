@@ -19,7 +19,7 @@ Metadata:
       - Label:
           default: Source Code Repository
         Parameters:
-          - SourceS3Bucket
+          - TFSourceS3Bucket
       - Label:
           default: Terraform
         Parameters:
