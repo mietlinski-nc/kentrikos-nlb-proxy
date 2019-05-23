@@ -5,6 +5,10 @@ Parameters:
     Type: String
     Description: CodePipeline name used as core Name
     Default: 'codepipeline-haproxy'
+  TFSourceS3BucketName:
+    Type: String
+    Description: Terraform S3 bucket name used as source for infrastruture deployment
+    Default: 'tf-codepipeline-haproxy'
   TerraformVersion:
     Type: String
     Default: 0.11.11
@@ -26,14 +30,18 @@ Metadata:
           - TerraformVersion
           - TerraformSha256
 Resources:
+  TFSourceS3Bucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Ref TFSourceS3BucketName
   SourceS3ObjectKey:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub '${TFSourceS3Bucket}-objectkey'
+      BucketName: !Sub '${TFSourceS3BucketName}-objectkey'
   ArtifactStoreBucket:
     Type: AWS::S3::Bucket
     Properties:
-      BucketName: !Sub '${TFSourceS3Bucket}-artifacts'
+      BucketName: !Sub '${TFSourceS3BucketName}-artifacts'
       VersioningConfiguration:
         Status: Enabled
       AccessControl: BucketOwnerFullControl
@@ -119,7 +127,7 @@ Resources:
                 - cd /tmp && curl -o terraform.zip https://releases.hashicorp.com/terraform/0.11.11/terraform_0.11.11_linux_amd64.zip && echo "94504f4a67bad612b5c8e3a4b7ce6ca2772b3c1559630dfd71e9c519e3d6149c terraform.zip" | sha256sum -c --quiet && unzip terraform.zip && mv terraform /usr/bin
             build:
               commands:
-                - terraform remote config -backend=s3 -backend-config="bucket=${TerraformStateBucket}" -backend-config="key=terraform.tfstate"
+                - terraform remote config -backend=s3 -backend-config="bucket=${TFSourceS3BucketName}" -backend-config="key=terraform.tfstate"
                 - terraform plan -out plan
                 - sleep 5
                 - terraform apply plan
