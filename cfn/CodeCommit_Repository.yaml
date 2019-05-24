@@ -5,6 +5,10 @@ Parameters:
     Type: String
     Description: Name for CodeCommit repository
     Default: 'bmw-haproxy'
+  InitialCommitS3Bucket:
+    Type: String
+    Description: S3 Bucket with 'zipped' code for initial commit
+    Default: 'mm-initial-code-for-codecommit-bucket'
 
 Resources:
   HaproxyRepository:
@@ -12,6 +16,8 @@ Resources:
     Properties:
       RepositoryDescription: HaproxyRepository
       RepositoryName: !Ref ProjectName
+      Code:
+        S3: !Ref InitialCommitS3Bucket
   TFSourceS3Bucket:
     Type: 'AWS::S3::Bucket'
     Properties:
