@@ -17,7 +17,9 @@ Resources:
       RepositoryDescription: HaproxyRepository
       RepositoryName: !Ref ProjectName
       Code:
-        S3: !Ref InitialCommitS3Bucket
+        S3CodeBucket:
+          Properties:
+            Bucket: !Ref InitialCommitS3Bucket
   TFSourceS3Bucket:
     Type: 'AWS::S3::Bucket'
     Properties:
