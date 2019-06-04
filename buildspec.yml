@@ -4,7 +4,7 @@ phases:
     commands:
       - echo Starting build process for BMW ECS HAPROXY
       - echo Logging in to Amazon ECR...
-      - $(aws ecr get-login --no-include-email --region ap-northeast-2)
+      - $(aws ecr get-login --no-include-email --region $AWS_DEFAULT_REGION)
   build:
     commands:
        - echo Build started on `date`
