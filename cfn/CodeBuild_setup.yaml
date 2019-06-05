@@ -1,4 +1,4 @@
-# Forked from: https://github.com/kentrikos/terraform-aws-shared-proxy-vpc-endpoint
+# Forked from: https://github.com/kentrikos/terraform-aws-shared-proxy-vpc-endpoint-service/
 AWSTemplateFormatVersion: '2010-09-09'
 Description: "Create CodeBuild project with required IAM/SG/SSM/CW Logs configuration and S3/DynamoDB for Terraform"
 Metadata:
@@ -11,11 +11,10 @@ Metadata:
       - NameString
     -
       Label:
-        default: "VPC configuration for CodeBuild and VPC Endpoint"
+        default: "VPC configuration for CodeBuild"
       Parameters:
       - VpcID
       - PrivateSubnetIDs
-      - VpcEndpointServiceName
     -
       Label:
         default: "IAM configuration"
@@ -26,55 +25,27 @@ Metadata:
         default: "Git repository configuration (e.g. Bitbucket)"
       Parameters:
       - ConfigRepoURL
-      - ConfigRepoBranch
-      - ConfigRepoPath
-    -
-      Label:
-        default: "Terraform tagging"
-      Parameters:
-      - TerraformTagKey
-      - TerraformTagValue
 
 
 Parameters:
     NameString:
         Description: String that will be used as basis for naming S3 bucket, CB project, etc.
         Type: String
-        Default: shared-proxy-vpc-endpoint
+        Default: nlb-proxy
     VpcID:
       Type: AWS::EC2::VPC::Id
-      Description: VPC in which CB project will run and where VPC Endpoint will be created
+      Description: VPC in which CB project will run
     PrivateSubnetIDs:
       Type: List<AWS::EC2::Subnet::Id>
-      Description: List of subnets in which CB will run (only private are supported) and where VPC Endpoint will be created
-    VpcEndpointServiceName:
-      Type: String
-      Description: Name of VPC Endpoint Service to which attach VPC Endpoint (formatted as "com.amazonaws.vpce.AWS_REGION.vpce-svc-00000000000000000")
-    IAMCodeBuildPoliciesARNs:
+      Description: List of subnets in which CB will run (only private are supported)
+   IAMCodeBuildPoliciesARNs:
       Description: List of IAM policy ARNs to be attached to CodeBuild role (comma separated string, no spaces)
       Default: 'arn:aws:iam::aws:policy/AdministratorAccess'
       Type: String
     ConfigRepoURL:
-      Description: Full https URL to configuration repository (starting with https://)
+      Description: Full ssh URL to configuration repository (starting with ssh://)
       Type: String
-      Default: 'https://github.com/kentrikos/terraform-aws-shared-proxy-vpc-endpoint.git'
-    ConfigRepoBranch:
-      Description: Name of the git branch or tag to use
-      Type: String
-      Default: '0.1.1'
-    ConfigRepoPath:
-      Description: Optional path within the configuration repository (use "." if config files are in root directory)
-      Type: String
-      Default: 'bootstrap/configuration_repo_template/'
-    TerraformTagKey:
-      Description: Single tag to be assigned to each resource (that supports tagging) created by Terraform (key)
-      Type: String
-      Default: 'environment'
-    TerraformTagValue:
-      Description: Single tag to be assigned to each resource (that supports tagging) created by Terraform (value)
-      Type: String
-      Default: 'dev'
-
+      Default: 'https://github.com/mietlinski-nc/kentrikos-nlb-proxy'
 
 Resources:
 ####################################
@@ -87,19 +58,6 @@ Resources:
       Type: "String"
       Value: !Ref ConfigRepoURL
 
-  ConfigRepoBranchParameterStore:
-    Type: "AWS::SSM::Parameter"
-    Properties:
-      Name: !Sub "/${NameString}/gitrepo/config_repo_branch"
-      Type: "String"
-      Value: !Ref ConfigRepoBranch
-
-  ConfigRepoPathParameterStore:
-    Type: "AWS::SSM::Parameter"
-    Properties:
-      Name: !Sub "/${NameString}/gitrepo/config_repo_path"
-      Type: "String"
-      Value: !Ref ConfigRepoPath
 
 
 ####################################
@@ -155,30 +113,12 @@ Resources:
         ComputeType: BUILD_GENERAL1_SMALL
         Image: aws/codebuild/standard:1.0
         EnvironmentVariables:
-        - Name: GIT_CONFIGURATION_REPO_URL
+        - Name: GIT_CONFIGURATION_REPO_URL 
           Value: !Ref ConfigRepoURLParameterStore
           Type: PARAMETER_STORE
-        - Name: GIT_CONFIGURATION_REPO_BRANCH
-          Value: !Ref ConfigRepoBranchParameterStore
+        - Name: GIT_SSH_KEY
+          Value: !Ref GitSSHPrivateKeyParameterStore
           Type: PARAMETER_STORE
-        - Name: GIT_CONFIGURATION_REPO_PATH
-          Value: !Ref ConfigRepoPathParameterStore
-          Type: PARAMETER_STORE
-        - Name: VPC_ID
-          Value: !Ref VpcID
-          Type: PLAINTEXT
-        - Name: PRIVATE_SUBNET_IDS
-          Value: !Join [ ",", !Ref PrivateSubnetIDs ]
-          Type: PLAINTEXT
-        - Name: VPC_ENDPOINT_SERVICE_NAME
-          Value: !Ref VpcEndpointServiceName
-          Type: PLAINTEXT
-        - Name: TERRAFORM_TAG_KEY
-          Value: !Ref TerraformTagKey
-          Type: PLAINTEXT
-        - Name: TERRAFORM_TAG_VALUE
-          Value: !Ref TerraformTagValue
-          Type: PLAINTEXT
         - Name: TERRAFORM_ACTION
           Value: "create"
           Type: PLAINTEXT
@@ -205,7 +145,6 @@ Resources:
               TF_STATE_BUCKET: ${TerraformStateBucket}
               TF_LOCK_TABLE: ${TerraformLockTable}
               TF_STATE_BUCKET_KEY: "tf/${NameString}"
-              VPC_ID: ${VpcID}
           phases:
             install:
               commands:
@@ -217,16 +156,8 @@ Resources:
               commands:
                 - env #DEBUG
                 - echo "Cloning configuration repository"
-                - git clone --branch $GIT_CONFIGURATION_REPO_BRANCH --single-branch $GIT_CONFIGURATION_REPO_URL terraform
-                - cd terraform/$GIT_CONFIGURATION_REPO_PATH
-                - echo "Generating terraform.tfvars"
-                - echo "vpc_id=\"$VPC_ID\"" >> terraform.tfvars
-                - export PRIVATE_SUBNET_IDS_CONVERTED="$(echo $PRIVATE_SUBNET_IDS | sed -e 's/^/\"/' -e 's/$/\"/' -e 's/,/\",\"/g')"
-                - echo "subnets=[$PRIVATE_SUBNET_IDS_CONVERTED]" >> terraform.tfvars
-                - echo "vpc_endpoint_service_name=\"$VPC_ENDPOINT_SERVICE_NAME\"" >> terraform.tfvars
-                - echo "common_tag = {key=\"$TERRAFORM_TAG_KEY\", value=\"$TERRAFORM_TAG_VALUE\"}" >> terraform.tfvars
-                - echo "region=\"$AWS_REGION\"" >> terraform.tfvars
-                - cat terraform.tfvars
+                - git clone $GIT_CONFIGURATION_REPO_URL terraform
+                - cd terraform
                 - terraform init -input=false -backend-config=region=$AWS_REGION -backend-config=bucket=$TF_STATE_BUCKET -backend-config=dynamodb_table=$TF_LOCK_TABLE -backend-config=key=$TF_STATE_BUCKET_KEY
                 - echo "$TERRAFORM_ACTION" > /tmp/terraform_action # workaround for bash brackets in yaml
                 - if grep -q -e "create" -e "plan" /tmp/terraform_action; then terraform plan -out=tfplan -input=false; fi
